@@ -1,4 +1,4 @@
-*.beam
+**/*.beam
 *.un~
 *.iml
 .idea
