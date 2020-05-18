@@ -15,8 +15,7 @@
   read_command/1,
   make_unconnected_pong_open_connections/2,
   make_open_connection_reply/2,
-  make_open_connection_request_2/5,
-  make_open_connection_reply_2/3
+  make_open_connection_reply_2/4
 ]).
 
 read_command(
@@ -31,6 +30,31 @@ read_command(
       clientGUID = ClientGUID}};
 
 read_command(
+    <<?ID_OPEN_CONNECTION_REQUEST_1:?BYTE,
+      ?MAGIC_BIT_PATTERN,
+      Version:?BYTE,
+      _/bytes>>) ->
+  #command{
+    name = open_connection_request,
+    data = #open_connection_request_data{
+      protocolVersion = Version}};
+
+read_command(
+    <<?ID_OPEN_CONNECTION_REQUEST_2:?BYTE,
+      ?MAGIC_BIT_PATTERN,
+      IPVersion:?BYTE, Addr:?INT32, Port:?SHORT, %% TODO: support IPv6 here
+      MTUSize:?SHORT,
+      ClientGUID:?INT64>>) ->
+  <<A:?BYTE, B:?BYTE, C:?BYTE, D:?BYTE>> = <<Addr:32>>,
+  InetAddress = {inet, {{A, B, C, D}, Port}},
+  #command{
+    name = open_connection_request_2,
+    data = #open_connection_request_2_data{
+      inet_address = InetAddress,
+      mtu_size = MTUSize,
+      client_guid = ClientGUID}};
+
+read_command(
     <<?ID_CONNECTED_PING_OPEN_CONNECTIONS:?BYTE,
       TimeSinceStart:?INT64,
       ?MAGIC_BIT_PATTERN,
@@ -41,17 +65,20 @@ read_command(
       timeSinceStart = TimeSinceStart,
       tbd = Rest}};
 
-read_command(<<?ID_OPEN_CONNECTION_REQUEST_1:?BYTE, ?MAGIC_BIT_PATTERN, Version:?BYTE, _/bytes>>) ->
+read_command(<<CommandByte, _/binary>>) ->
+  io:format("Unsupported command: ~p~n", [CommandByte]),
   #command{
-    name = open_connection_request,
-    data = #open_connection_request_data{
-      protocolVersion = Version}}.
+    name = unknown,
+    data = undefined
+  }.
+
+
 
 make_unconnected_pong_open_connections(TimeSinceStart, ServerInfo) ->
   Identifier = lists:concat([
     "MCPE;",
     ServerInfo#server_info.name, ";",
-    ServerInfo#server_info.protocol_version, ";",
+    integer_to_list(ServerInfo#server_info.protocol_version), ";",
     ServerInfo#server_info.mcpe_version, ";",
     integer_to_list(ServerInfo#server_info.player_count), ";",
     integer_to_list(ServerInfo#server_info.max_player_count)]),
@@ -64,22 +91,19 @@ make_unconnected_pong_open_connections(TimeSinceStart, ServerInfo) ->
     Identifier].
 
 make_open_connection_reply(ServerId, MTUSize) ->
-  <<?ID_OPEN_CONNECTION_REPLY_1:?BYTE, ?MAGIC_BIT_PATTERN, ServerId:?INT64, 0:?BYTE, MTUSize:?SHORT>>.
-
-make_open_connection_request_2(Security, Cookie, ServerUDPPort, MTUSize, ClientId) ->
-  <<?ID_OPEN_CONNECTION_REQUEST_2:?BYTE,
+  <<?ID_OPEN_CONNECTION_REPLY_1:?BYTE,
     ?MAGIC_BIT_PATTERN,
-    Security:?BYTE,
-    Cookie:?INT64,
-    ServerUDPPort:?SHORT,
-    MTUSize:?SHORT,
-    ClientId:?INT64>>.
+    ServerId:?INT64,
+    0:?BYTE,
+    MTUSize:?SHORT>>.
 
-make_open_connection_reply_2(#server_info{id=ServerId}, ClientUDPPort, MTUSize) ->
+make_open_connection_reply_2(#server_info{id=ServerId}, ClientHost, ClientPort, MTUSize) ->
   <<?ID_OPEN_CONNECTION_REPLY_2:?BYTE,
     ?MAGIC_BIT_PATTERN,
     ServerId:?INT64,
-    ClientUDPPort:?SHORT,
+    4:?BYTE, %% IPv4,
+    ClientHost:?INT32,
+    ClientPort:?SHORT,
     MTUSize:?SHORT,
     0:?BYTE>>.
 

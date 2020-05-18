@@ -10,6 +10,9 @@
 
 %% Definitions based on https://wiki.vg/Pocket_Minecraft_Protocol#Terminology
 
+%% Network Configuration
+-define(MTU_SIZE, 1440).
+
 %% Data Type Bit Widths
 -define(BYTE, 8).
 -define(SHORT, 16).
@@ -28,12 +31,19 @@
 %% Login Packets
 -define(ID_UNCONNECTED_PING_OPEN_CONNECTIONS, 16#01).
 -record(unconnected_ping_open_connections_data, {timeSinceStart, clientGUID}).
--define(ID_CONNECTED_PING_OPEN_CONNECTIONS, 16#02).
--record(connected_ping_open_connections_data, {timeSinceStart, tbd}).
+
 -define(ID_UNCONNECTED_PONG_OPEN_CONNECTIONS, 16#1C).
+
 -define(ID_OPEN_CONNECTION_REQUEST_1, 16#05).
 -record(open_connection_request_data, {protocolVersion}).
 -define(ID_OPEN_CONNECTION_REPLY_1, 16#06).
+
 -define(ID_OPEN_CONNECTION_REQUEST_2, 16#07).
+-record(open_connection_request_2_data, {inet_address, mtu_size, client_guid}).
 -define(ID_OPEN_CONNECTION_REPLY_2, 16#08).
+
 -define(ID_INCOMPATIBLE_PROTOCOL_VERSION, 16#1A).
+
+-define(ID_CONNECTED_PING_OPEN_CONNECTIONS, 16#02).
+-record(connected_ping_open_connections_data, {timeSinceStart, tbd}).
+
